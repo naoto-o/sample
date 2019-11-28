@@ -76,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                     try {
-                        // マイクからの入力設定
+                        // マイクからの入力設定-
                         mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
 
                         // 記録フォーマットをデフォルトに設定
