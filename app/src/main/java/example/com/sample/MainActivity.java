@@ -1,11 +1,15 @@
 package example.com.sample;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -15,6 +19,8 @@ import android.widget.VideoView;
 import java.io.File;
 import java.io.IOException;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.PermissionChecker;
 
 import android.os.Bundle;
 
@@ -50,6 +56,10 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton recordButton;
     private boolean mRecordingFlag = false;
 
+    private static final String TAG = "M Permission";
+    private int REQUEST_CODE_RECORD_AUDIO_PERMISSION = 0x01;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +77,20 @@ public class MainActivity extends AppCompatActivity {
         // クリック時の処理
         findViewById(R.id.imageButton).setOnClickListener(new View.OnClickListener() {
 
+
             public void onClick(View v) {
+
+
+                if ((PermissionChecker.checkSelfPermission(
+                        MainActivity.this, Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED )||
+                        (PermissionChecker.checkSelfPermission(
+                                MainActivity.this,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                != PackageManager.PERMISSION_GRANTED)) {
+                    // パーミッションをリクエストする
+                    requestRECORDAUDIOPermission();
+                    return;
+                }
 
                 // 録音状態判定
                 if(!mRecordingFlag) {
@@ -170,17 +193,89 @@ public class MainActivity extends AppCompatActivity {
                     } catch(IllegalStateException e) {
                         e.printStackTrace();
                     }
-
                 }
             }
 
-
-
-
-
-
         });
 
+
+
+    }
+
+    private void requestRECORDAUDIOPermission(){
+        if (
+                (ActivityCompat.shouldShowRequestPermissionRationale(
+                        this,Manifest.permission.RECORD_AUDIO))||
+                        (ActivityCompat.shouldShowRequestPermissionRationale(
+                                this,Manifest.permission.WRITE_EXTERNAL_STORAGE))){
+
+            Log.d(TAG, "shouldShowRequestPermissionRationale:追加説明");
+            // 権限チェックした結果、持っていない場合はダイアログを出す
+            new AlertDialog.Builder(this)
+                    .setTitle("パーミッションの追加説明")
+                    .setMessage("このアプリを使用するにはパーミッションが必要です")
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            ActivityCompat.requestPermissions(MainActivity.this,
+                                    new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                    REQUEST_CODE_RECORD_AUDIO_PERMISSION);
+                        }
+                    })
+                    .create()
+                    .show();
+            return;
+        }
+        // 権限を取得する
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO,Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                REQUEST_CODE_RECORD_AUDIO_PERMISSION);
+        return;
+    }
+
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+
+        if (requestCode == REQUEST_CODE_RECORD_AUDIO_PERMISSION) {
+            if (grantResults.length != 2 || grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "onRequestPermissionsResult:DENYED");
+
+                if ((ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.RECORD_AUDIO)) ||
+                        (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                                Manifest.permission.WRITE_EXTERNAL_STORAGE))){
+                    Log.d(TAG, "[show error]");
+                    new AlertDialog.Builder(this)
+                            .setTitle("パーミッション取得エラー ")
+                            .setMessage("再試行する場合は、再度Requestボタンを押してください")
+                            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    // サンプルのため、今回はもう一度操作をはさんでいますが
+                                    // ここでrequestCameraPermissionメソッドの実行でもよい
+                                }
+                            })
+                            .create()
+                            .show();
+
+                } else {
+                    Log.d(TAG, "[show app settings guide]");
+                    new AlertDialog.Builder(this)
+                            .setTitle("パーミッション取得エラー")
+                            .setMessage("今後は許可しないが選択されています。アプリ設定＞権限をチェックしてください（権限をON/OFFすることで状態はリセットされます）")
+                            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    openSettings();
+                                }
+                            })
+                            .create()
+                            .show();
+                }
+            } else {
+                Log.d(TAG, "onRequestPermissionsResult:GRANTED");
+                // TODO 許可されたのでカメラにアクセスする
+            }
+        } else super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
     @Override
@@ -194,7 +289,13 @@ public class MainActivity extends AppCompatActivity {
         mVideoView.setVisibility(View.GONE);
         mVideoView.setVisibility(View.VISIBLE);
     }
-
+    private void openSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        //Fragmentの場合はgetContext().getPackageName()
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        intent.setData(uri);
+        startActivity(intent);
+    }
 
 
 
