@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "M Permission";
     private int REQUEST_CODE_RECORD_AUDIO_PERMISSION = 0x01;
-    //保存先
+    //保存先 
     String filePath = Environment.getExternalStorageDirectory() + "/sample.wav";
     String sdPath = Environment.getExternalStorageDirectory().getPath();
 
